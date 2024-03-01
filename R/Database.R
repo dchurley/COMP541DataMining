@@ -1,0 +1,9 @@
+library(RMySQL)
+mysqlconnection = dbConnect(RMySQL::MySQL(),
+                            dbname='project',
+                            host='150.230.44.118',
+                            port=3306,
+                            user='project',
+                            password='COMP541',
+                            local_infile = TRUE)
+dbListTables(mysqlconnection)
