@@ -1,5 +1,3 @@
-#install.packages("RMySQL")
-
 library(RMySQL)
 print("Hello")
 
