@@ -23,6 +23,7 @@ corpus <- Corpus(VectorSource(texts))
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, removePunctuation)
 corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, removeWords, stopwords())
 corpus <- tm_map(corpus, stripWhitespace)
 
 # Create a document-term matrix
@@ -30,3 +31,4 @@ dtm <- DocumentTermMatrix(corpus)
 
 # Inspect the document-term matrix
 inspect(dtm)
+
