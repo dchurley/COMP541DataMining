@@ -5,6 +5,9 @@ library(rvest)
 library(RSelenium)
 library(RMySQL)
 
+source("new_york_times_webscraper.R")
+source("fox_news_webscraper.R")
+
 # Developer: Jae Molina
 # This project supports ChromeDriver version: 122.0.6261.94
 # ChromeDriver (Win32) post Chome 115 downloads located at https://googlechromelabs.github.io/chrome-for-testing/#stable
@@ -15,6 +18,7 @@ library(RMySQL)
 #  binman::list_versions(appname = "chromedriver")
 #  ```
 
+# Setup database
 mysqlconnection = dbConnect(RMySQL::MySQL(),
                             dbname='project',
                             host='150.230.44.118',
@@ -23,62 +27,61 @@ mysqlconnection = dbConnect(RMySQL::MySQL(),
                             password='COMP541',
                             local_infile = TRUE)
 dbListTables(mysqlconnection)
+db_name <- "Articles"
+# Database input function
+insert_into_database <- function(current_site, title, author, summary, text) {
+  # Do not insert data if text is null
+  if(is.null(text)) {
+    print("Warning: Could not insert into database, text is NULL.")
+    return()
+  }
+  
+  id <- as.integer(dbGetQuery(mysqlconnection, "SELECT COUNT(*) FROM Articles") + 1)
+  
+  # Send into database
+  dbSendQuery(mysqlconnection, paste('SET @ID = ', id, ";"))
+  dbSendQuery(mysqlconnection, paste('SET @source = "', current_site, '";'))
+  dbSendQuery(mysqlconnection, paste('SET @title = "', title, '";'))
+  dbSendQuery(mysqlconnection, paste('SET @author = "', author, '";'))
+  dbSendQuery(mysqlconnection, paste('SET @summary = "', summary, '";'))
+  dbSendQuery(mysqlconnection, paste('SET @text = "', text, '";'))
+  
+  dbSendQuery(mysqlconnection, paste('INSERT INTO', db_name, '(id, source, title, author, summary, text, rating)',
+                                     'VALUES(@ID, @source, @title, @author, @summary, @text, NULL)'))
+  
+  result <- dbGetQuery(mysqlconnection, 'SELECT * FROM Articles WHERE ID = @id')
+  print(result)
+  id <- id + 1
+}
 
 
 # Setup the RSelenium to the ChromeDriver initializing the "server"
-```{r, eval=FALSE}
 rD <- RSelenium::rsDriver() # This might throw an error
-```
-
 # Assign the client to an object
 remDr <- rD[["client"]]
 
 # NEW YORK TIMES WEB SCRAPER
+current_site <- "New York Times"
+links <- new_york_times_linkscraper("https://www.nytimes.com/section/politics")
 
-# Navigate to the NYT Politics, something very polarizing and more likely to Fake News
-remDr$navigate("https://www.nytimes.com/section/politics")
-
-# Scroll down the site
-webElem <- remDr$findElement("css", "body")
-for(x in 1:10) {
-  webElem$sendKeysToElement(list(key = "end"))
+for(link in links) {
+  result <- new_york_times_webscraper(remDr, link)
+  insert_into_database(current_site, result[[1]], result[[2]], result[[3]], result[[4]])
 }
 
-# Get the WebSource of the Page
-```{r, eval=FALSE}
-webSource <- remDr$getPageSource()[[1]]
-```
-
-# New York Times as of March, 2024 has their articles under the CSS navigation with the ID stream-panel
-# Get the Articles from here
-webElem <- remDr$findElement("id", "stream-panel")
-
-# Articles contain the hyperlink to the article, save this element so we can iterate and get the hyperlinks
-webs <- webElem$findChildElements("css", "a")
-
-links <- sapply(webs, function(x) x$getElementAttribute("href"))
-
-# Go through each article and collect the articles
-lapply(links, function(x) remDr$navigate(x))
-
-remDr$navigate("https://www.nytimes.com/2024/03/04/us/politics/faa-boeing-737-max-audit.html")
-
-# Get the Title, Author and Summary of the article
-title <- remDr$findElement("css", "h1")$getElementText()[[1]]
-author <- remDr$findElement("class", "authorPageLinkClass")$getElementAttribute("innerText")[[1]]
-summary <- remDr$findElement("id", "article-summary")$getElementText()[[1]]
-
-# Get the Article text
-webElem <- remDr$findElement("name", "articleBody")
-paragraphs <- webElem$findChildElements("css", "p")
-text <- sapply(paragraphs, function(x) x$getElementAttribute("innerText"))
-# Remove the unneccessary text
-text <- head(text, -1)
-text <- str_flatten(text)
-
-# SITES VARYING THE POLITICAL SPECTRUM
-
 # FOX NEW WEBSCRAPER
+current_site = "Fox News"
+for(category in list("https://www.foxnews.com/category/politics/executive", 
+                  "https://www.foxnews.com/category/politics/senate", 
+                  "https://www.foxnews.com/category/politics/house-of-representatives",
+                  "https://www.foxnews.com/category/politics/judiciary",
+                  "https://www.foxnews.com/category/politics/foreign-policy")) {
+  links <- fox_news_linkscraper(remDr, category)
+  for(link in links) {
+    result <- fox_news_webscraper(remDr, link)
+    insert_into_database(current_site, result[[1]], result[[2]], result[[3]], result[[4]])
+  }
+}
 
 # LA TIMES WEBSCAPER
 
