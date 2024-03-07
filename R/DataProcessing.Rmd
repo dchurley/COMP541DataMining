@@ -1,6 +1,7 @@
 ```{r}
 library(tm)
 library(wordcloud)
+library(topicmodels)
 ```
 
 ``` {r}
@@ -14,7 +15,7 @@ conn = dbConnect(RMySQL::MySQL(),
                             password='COMP541',
                             local_infile = TRUE)
 
-fullData = dbGetQuery(conn, statement = "select * from `Articles` where `id` < 100")
+fullData = dbGetQuery(conn, statement = "select * from `Articles`")
 ```
 
 ```{r}
@@ -32,16 +33,46 @@ corpus <- tm_map(corpus, removeWords, stopwords())
 corpus <- tm_map(corpus, stripWhitespace)
 ```
 ```{r}
-# Create a document-term matrix
+# TERM DOCUMENT matrix for word cloud
 tdm <- TermDocumentMatrix(corpus)
-inspect(dtm)
 m <- as.matrix(tdm)
 v <- sort(rowSums(m), decreasing = TRUE)
 d <- data.frame(word = names(v), freq = v)
 ```
 
 ```{r}
-wordcloud(d$word, d$freq, random.order=FALSE, rot.per=0)
+#this takes a long time to run
+suppressWarnings(wordcloud(d$word, d$freq, random.order=FALSE, rot.per=0))
+```
+```{r}
+#DOCUMENT TERM matrix for LDA
+dtm <- DocumentTermMatrix(corpus)
+# Filter out documents with no words
+dtm <- dtm[rowSums(as.matrix(dtm)) > 0, ]
+#dtm <- removeSparseTerms(dtm, sparse = 0.1)
+```
+
+```{r}
+#this takes a minute to run
+num_topics <- 5
+lda_model <- LDA(dtm, k = num_topics, method = "Gibbs")
+```
+
+```{r}
+# Get the terms associated with each topic
+terms <- terms(lda_model, 10)  # Adjust the number of terms as needed
+
+# Print the top terms for each topic
+for (i in 1:num_topics) {
+  cat("Topic", i, ":", paste(terms[i, ], collapse = ", "), "\n")
+}
+```
+```{r}
+# Get the topic distributions for each document
+doc_topics <- posterior(lda_model)$topics
+
+# Display the topic distribution for a specific document (e.g., document 1)
+print(doc_topics[1, ])
 ```
 
 
