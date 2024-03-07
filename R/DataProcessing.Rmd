@@ -1,8 +1,10 @@
+```{r}
 library(tm)
+library(wordcloud)
+```
 
+``` {r}
 # Load the text data
-
-
 library(RMySQL)
 conn = dbConnect(RMySQL::MySQL(),
                             dbname='project',
@@ -12,27 +14,34 @@ conn = dbConnect(RMySQL::MySQL(),
                             password='COMP541',
                             local_infile = TRUE)
 
-texts = dbGetQuery(conn, statement = "select `text` from `Kaggle` where `X` = 3")
+fullData = dbGetQuery(conn, statement = "select * from `Articles` where `id` < 100")
+```
 
-#texts <- c("Text one for analysis", "Another text for analysis")
+```{r}
+#func to remove everything but english characters and spaces
 removeSpecialChars <- function(x) {
-  gsub("[^a-zA-Z ]", "", x) # Keep only alphanumeric characters and spaces
+  gsub("[^a-zA-Z ]", "", x)
 }
 
-
 # Create a corpus
-corpus <- Corpus(VectorSource(texts))
-
-# Preprocess the corpus: remove punctuation, numbers, whitespace, and convert to lowercase
+corpus <- Corpus(VectorSource(fullData$text))
+# clean the corpus
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
 corpus <- tm_map(corpus, removeWords, stopwords())
 corpus <- tm_map(corpus, stripWhitespace)
-
-
+```
+```{r}
 # Create a document-term matrix
-dtm <- DocumentTermMatrix(corpus)
-
-# Inspect the document-term matrix
+tdm <- TermDocumentMatrix(corpus)
 inspect(dtm)
+m <- as.matrix(tdm)
+v <- sort(rowSums(m), decreasing = TRUE)
+d <- data.frame(word = names(v), freq = v)
+```
+
+```{r}
+wordcloud(d$word, d$freq, random.order=FALSE, rot.per=0)
+```
+
 
