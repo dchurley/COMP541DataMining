@@ -5,6 +5,7 @@ library(rvest)
 library(RSelenium)
 library(RMySQL)
 
+
 source("new_york_times_webscraper.R")
 source("fox_news_webscraper.R")
 
