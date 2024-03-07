@@ -1,5 +1,6 @@
 # Developer: Jae Molina
 
+
 fox_news_linkscraper <- function(remDr, link) {
   remDr$navigate(link)
   webElem <- remDr$findElement("xpath", "//a[contains(text(),'Show More')]")

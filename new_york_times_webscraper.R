@@ -1,5 +1,6 @@
 # Developer: Jae Molina
 
+
 new_york_times_linkscraper <- function(remDr, link) {
   # Navigate to the NYT Politics, something very polarizing and more likely to Fake News
   remDr$navigate(link)
