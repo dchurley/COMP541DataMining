@@ -6,6 +6,7 @@ library(tidyverse)
 library(tidytext)
 library(widyr)
 library(ggraph)
+library(ggplot2)
 library(igraph)
 ```
 
@@ -25,7 +26,9 @@ fullData = dbGetQuery(conn, statement = "select * from `Articles`")
 
 
 ```{r}
-#format and clean the data
+#NETWORK GRAPH CODE
+#
+#format and clean the data for the network graph
 news_words <- fullData %>%
   unnest_tokens(output = word, input = text) %>%
   anti_join(stop_words, by = "word") %>%
@@ -101,13 +104,13 @@ dtm <- dtm[rowSums(as.matrix(dtm)) > 0, ]
 
 ```{r}
 #this takes a minute to run
-num_topics <- 10
+num_topics <- 5
 lda_model <- LDA(dtm, k = num_topics, method = "Gibbs")
 ```
 
 ```{r}
 # Get the terms associated with each topic
-terms <- terms(lda_model, 10)  # Adjust the number of terms as needed
+terms <- terms(lda_model, num_topics)  # Adjust the number of terms as needed
 
 # Print the top terms for each topic
 for (i in 1:num_topics) {
@@ -121,6 +124,24 @@ doc_topics <- posterior(lda_model)$topics
 # Display the topic distribution for a specific document (e.g., document 1)
 print(doc_topics[1, ])
 ```
+
+```{r}
+# Get the dominant topic for each document
+dominant_topic <- apply(doc_topics, 1, which.max)
+
+# Count the number of articles per topic
+topic_counts <- table(dominant_topic)
+
+# Convert to data frame
+topic_counts_df <- data.frame(Topic = as.integer(names(topic_counts)), Count = as.numeric(topic_counts))
+
+# Plot the graph
+ggplot(topic_counts_df, aes(x = factor(Topic), y = Count)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Topic", y = "Number of Articles") +
+  ggtitle("Number of Articles per Topic")
+```
+
 
 
 

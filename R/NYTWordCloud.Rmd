@@ -1,0 +1,54 @@
+```{r}
+library(tm)
+library(wordcloud)
+library(topicmodels)
+```
+
+``` {r}
+# Load the text data
+library(RMySQL)
+conn = dbConnect(RMySQL::MySQL(),
+                            dbname='project',
+                            host='150.230.44.118',
+                            port=3306,
+                            user='project',
+                            password='COMP541',
+                            local_infile = TRUE)
+
+fullData = dbGetQuery(conn, statement = "SELECT * FROM `Articles` WHERE `source` LIKE '%New York Times%'")
+```
+
+
+
+```{r}
+#func to remove everything but english characters and spaces
+removeSpecialChars <- function(x) {
+  gsub("[^a-zA-Z ]", "", x)
+}
+
+# Create a corpus
+corpus <- Corpus(VectorSource(fullData$text))
+# clean the corpus
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
+corpus <- tm_map(corpus, removeWords, stopwords())
+#remove the word said because it's the most common and it's boring
+corpus <- tm_map(corpus, removeWords, "said")
+corpus <- tm_map(corpus, stripWhitespace)
+```
+
+```{r}
+# TERM DOCUMENT matrix for word cloud
+tdm <- TermDocumentMatrix(corpus)
+m <- as.matrix(tdm)
+v <- sort(rowSums(m), decreasing = TRUE)
+d <- data.frame(word = names(v), freq = v)
+```
+
+```{r}
+#this takes a long time to run
+suppressWarnings(wordcloud(d$word, d$freq, random.order=FALSE, rot.per=0))
+```
+
+
+
