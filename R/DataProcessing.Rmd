@@ -2,6 +2,11 @@
 library(tm)
 library(wordcloud)
 library(topicmodels)
+library(tidyverse)
+library(tidytext)
+library(widyr)
+library(ggraph)
+library(igraph)
 ```
 
 ``` {r}
@@ -18,6 +23,45 @@ conn = dbConnect(RMySQL::MySQL(),
 fullData = dbGetQuery(conn, statement = "select * from `Articles`")
 ```
 
+
+```{r}
+#format and clean the data
+news_words <- fullData %>%
+  unnest_tokens(output = word, input = text) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(str_detect(word, "[:alpha:]")) %>%
+  distinct()
+```
+
+```{r}
+#filter out words not used by at least 50 authors
+#and not creating at least 60% correlation
+author_used_word <- news_words %>%
+  count(word, name = "authors_n") %>%
+  filter(authors_n >= 50)
+
+word_correlations <- news_words %>%
+  semi_join(author_used_word, by = "word") %>%
+  pairwise_cor(item = word, feature = author) %>%
+  filter(correlation >= 0.6)
+```
+
+```{r}
+#graph the data
+graph_from_data_frame(d = word_correlations, 
+                      vertices = author_used_word %>%
+                        semi_join(word_correlations, by = c("word" = "item1"))) %>%
+  
+  ggraph(layout = "fr") + geom_edge_link() + 
+  geom_node_point() + geom_node_text(aes(label = name), repel = TRUE)
+```
+
+
+
+
+
+
+
 ```{r}
 #func to remove everything but english characters and spaces
 removeSpecialChars <- function(x) {
@@ -30,8 +74,11 @@ corpus <- Corpus(VectorSource(fullData$text))
 corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
 corpus <- tm_map(corpus, removeWords, stopwords())
+#remove the word said because it's the most common and it's boring
+corpus <- tm_map(corpus, removeWords, "said")
 corpus <- tm_map(corpus, stripWhitespace)
 ```
+
 ```{r}
 # TERM DOCUMENT matrix for word cloud
 tdm <- TermDocumentMatrix(corpus)
@@ -47,14 +94,14 @@ suppressWarnings(wordcloud(d$word, d$freq, random.order=FALSE, rot.per=0))
 ```{r}
 #DOCUMENT TERM matrix for LDA
 dtm <- DocumentTermMatrix(corpus)
+#dtm <- removeSparseTerms(dtm, sparse = 0.1)
 # Filter out documents with no words
 dtm <- dtm[rowSums(as.matrix(dtm)) > 0, ]
-#dtm <- removeSparseTerms(dtm, sparse = 0.1)
 ```
 
 ```{r}
 #this takes a minute to run
-num_topics <- 5
+num_topics <- 10
 lda_model <- LDA(dtm, k = num_topics, method = "Gibbs")
 ```
 
@@ -74,5 +121,6 @@ doc_topics <- posterior(lda_model)$topics
 # Display the topic distribution for a specific document (e.g., document 1)
 print(doc_topics[1, ])
 ```
+
 
 
