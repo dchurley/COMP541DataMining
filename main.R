@@ -5,7 +5,6 @@ library(rvest)
 library(RSelenium)
 library(RMySQL)
 
-
 source("new_york_times_webscraper.R")
 source("fox_news_webscraper.R")
 
@@ -63,7 +62,7 @@ remDr <- rD[["client"]]
 
 # NEW YORK TIMES WEB SCRAPER
 current_site <- "New York Times"
-links <- new_york_times_linkscraper("https://www.nytimes.com/section/politics")
+links <- new_york_times_linkscraper(remDr, "https://www.nytimes.com/section/politics")
 
 for(link in links) {
   result <- new_york_times_webscraper(remDr, link)
@@ -83,6 +82,8 @@ for(category in list("https://www.foxnews.com/category/politics/executive",
     insert_into_database(current_site, result[[1]], result[[2]], result[[3]], result[[4]])
   }
 }
+
+# TODO --> CREATE MORE WEBSCRAPERS FOR MORE DATA <--
 
 # LA TIMES WEBSCAPER
 
