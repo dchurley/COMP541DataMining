@@ -34,6 +34,8 @@ dtm <- DocumentTermMatrix(corpus)
 # Convert the document-term matrix to a sparse matrix
 spam <- removeSparseTerms(dtm, 0.999)
 
+head(as.matrix(spam))
+
 # Create data frames for training and labels
 train_data <- as.data.frame(as.matrix(spam))
 labels <- data$label

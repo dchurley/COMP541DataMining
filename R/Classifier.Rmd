@@ -1,4 +1,12 @@
 ```{r}
+library(tidytext)
+library(caret)
+library(tm)
+library(e1071)
+```
+
+
+```{r}
 library(RMySQL)
 conn = dbConnect(RMySQL::MySQL(),
                             dbname='project',
@@ -8,6 +16,71 @@ conn = dbConnect(RMySQL::MySQL(),
                             password='COMP541',
                             local_infile = TRUE)
 
-data = dbGetQuery(conn, statement = "select * from `Kaggle`")
+data = dbGetQuery(conn, statement = "select * from `Kaggle` where `X` < 500")
+```
+
+```{r}
+removeSpecialChars <- function(x) {
+  gsub("[^a-zA-Z ]", "", x)
+}
+
+
+# Create a corpus from text data
+corpus <- Corpus(VectorSource(data$text))
+
+# clean the corpus
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
+corpus <- tm_map(corpus, removeWords, stopwords())
+#remove the word said because it's the most common and it's boring
+corpus <- tm_map(corpus, removeWords, "said")
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, stemDocument, language="english")
+#creating term matrix with TF-IDF weighting
+dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+
+# Create a document-term matrix
+#dtm <- DocumentTermMatrix(corpus)
+```
+```{r}
+dtm
+```
+
+```{r}
+spam <- removeSparseTerms(dtm, 0.95)
+```
+
+```{r}
+spam
+```
+```{r}
+dataFrame <- as.data.frame(as.matrix(spam), stringsAsFactors=False)
+```
+
+```{r}
+
+dataFrame$label = data$label
+dataFrame
+```
+
+```{r}
+# Split data into training and testing sets
+set.seed(123) # For reproducibility
+trainIndex <- createDataPartition(dataFrame$label, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- dtm_df[trainIndex, ]
+test_data <- dtm_df[-trainIndex, ]
+
+# Train a classifier
+model <- svm(label ~ ., data = train_data)
+
+# Make predictions on test data
+predictions <- predict(model, newdata = test_data)
+
+# Evaluate the model
+confusion_matrix <- table(predictions, test_data$label)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
 ```
 
