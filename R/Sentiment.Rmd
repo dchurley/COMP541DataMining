@@ -1,0 +1,56 @@
+```{r}
+source("Database.R")
+
+data <- SQL_GET_DATA("Kaggle", "`X` < 50")
+data$id = data$X
+data
+```
+
+```{r}
+library(syuzhet)
+library(tm)
+library(reshape2)
+```
+
+
+```{r}
+
+corpus <- data$text
+
+# Create a function to perform sentiment analysis on a single document
+sentiment_analysis <- function(text) {
+  # Preprocess text
+  text <- tolower(text)
+  text <- removePunctuation(text)
+  text <- removeNumbers(text)
+  
+  # Tokenize the text
+  tokens <- unlist(strsplit(text, "\\s+"))
+  text <- paste(tokens, collapse = " ")
+  
+  # Perform sentiment analysis using syuzhet
+  sentiment <- get_nrc_sentiment(text)
+  
+  return(sentiment)
+}
+
+# Apply sentiment analysis function to each document in the corpus
+sentiment_scores <- lapply(data$text, sentiment_analysis)
+
+# Convert the list of sentiment scores to a data frame
+sentiment_df <- do.call(rbind, sentiment_scores)
+
+# Add document IDs to the sentiment data frame
+sentiment_df$id <- data$id
+
+# Reshape the data frame to have documents as rows and sentiments as columns
+sentiment_table <- dcast(melt(sentiment_df, id.vars = "id"), 
+                         id ~ variable, value.var = "value", fill = 0)
+
+# View the sentiment table
+print(sentiment_table)
+sentiment_table$label = data$label
+
+sentiment_table
+```
+

@@ -110,18 +110,19 @@ lda_model <- LDA(dtm, k = num_topics, method = "Gibbs")
 
 ```{r}
 # Get the terms associated with each topic
-terms <- terms(lda_model, num_topics)  # Adjust the number of terms as needed
+terms <- terms(lda_model, num_topics)
 
 # Print the top terms for each topic
 for (i in 1:num_topics) {
   cat("Topic", i, ":", paste(terms[i, ], collapse = ", "), "\n")
 }
 ```
+
 ```{r}
 # Get the topic distributions for each document
 doc_topics <- posterior(lda_model)$topics
 
-# Display the topic distribution for a specific document (e.g., document 1)
+# Display the topic distribution for a specific document
 print(doc_topics[1, ])
 ```
 
