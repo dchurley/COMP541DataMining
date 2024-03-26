@@ -1,7 +1,7 @@
 ```{r}
 source("Database.R")
 
-data <- SQL_GET_DATA("Kaggle", "`X` < 50")
+data <- SQL_GET_DATA("Kaggle", "`X` < 1000")
 data$id = data$X
 data
 ```
@@ -10,6 +10,9 @@ data
 library(syuzhet)
 library(tm)
 library(reshape2)
+library(caret)
+library(e1071)
+library(rpart)
 ```
 
 
@@ -48,9 +51,60 @@ sentiment_table <- dcast(melt(sentiment_df, id.vars = "id"),
                          id ~ variable, value.var = "value", fill = 0)
 
 # View the sentiment table
-print(sentiment_table)
-sentiment_table$label = data$label
+
 
 sentiment_table
 ```
+```{r}
+df <- subset(sentiment_table, select = -id)
+
+df <- t(apply(df, 1, function(x) x / sum(x)))
+
+df <- as.data.frame(df)
+
+```
+
+```{r}
+df$label = data$label
+df
+```
+
+
+```{r}
+set.seed(123) # For reproducibility
+trainIndex <- createDataPartition(df$label, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- df[trainIndex, ]
+test_data <- df[-trainIndex, ]
+
+# Train a classifier
+model <- svm(label ~ ., data = train_data, method = "class")
+#model <- rpart(label ~ ., data = train_data, method = "class")
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+train_data
+```
+
+```{r}
+# Make predictions on test data
+predictions <- predict(model, newdata = test_data)
+
+
+# Evaluate the model
+predictions
+```
+
+```{r}
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+```
+
 
