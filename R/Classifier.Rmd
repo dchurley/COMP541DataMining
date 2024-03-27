@@ -9,7 +9,8 @@ library(e1071)
 ```{r}
 source("Database.R")
 
-data <- SQL_GET_DATA("Articles", "`id` < 10")
+data <- SQL_GET_DATA("Tutorial")
+data$id = data$X
 ```
 
 ```{r}
@@ -28,7 +29,7 @@ corpus <- tm_map(corpus, removeWords, stopwords())
 #remove the word said because it's the most common and it's boring
 corpus <- tm_map(corpus, removeWords, "said")
 corpus <- tm_map(corpus, stripWhitespace)
-corpus <- tm_map(corpus, stemDocument, language="english")
+#corpus <- tm_map(corpus, stemDocument, language="english")
 #creating term matrix with TF-IDF weighting
 dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
 
@@ -40,20 +41,25 @@ dtm
 ```
 
 ```{r}
-spam <- removeSparseTerms(dtm, 0.95)
+spam <- removeSparseTerms(dtm, 0.75)
+spam
 ```
 
 ```{r}
-spam
+print(as.data.frame(as.matrix(spam)))
 ```
 ```{r}
 dataFrame <- as.data.frame(as.matrix(spam), stringsAsFactors=False)
+dataFrame
 ```
 
 ```{r}
 
 dataFrame$label = data$label
 dataFrame
+```
+```{r}
+library(rpart)
 ```
 
 ```{r}
@@ -66,10 +72,11 @@ train_data <- dataFrame[trainIndex, ]
 test_data <- dataFrame[-trainIndex, ]
 
 # Train a classifier
-model <- svm(label ~ ., data = train_data)
+model <- rpart(label ~ ., data = train_data, method = "class")
 
 # Make predictions on test data
-predictions <- predict(model, newdata = test_data)
+predictions <- predict(model, newdata = test_data, type = "class")
+predictions
 
 # Evaluate the model
 confusion_matrix <- table(predictions, test_data$label)
