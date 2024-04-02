@@ -1,4 +1,5 @@
 ```{r}
+#import libraries
 library(tidytext)
 library(caret)
 library(tm)
@@ -7,6 +8,7 @@ library(e1071)
 
 
 ```{r}
+#get the training data
 source("Database.R")
 
 data <- SQL_GET_DATA("Tutorial")
@@ -14,6 +16,7 @@ data$id = data$X
 ```
 
 ```{r}
+#func to remove all characters but english alphabet letters
 removeSpecialChars <- function(x) {
   gsub("[^a-zA-Z ]", "", x)
 }
@@ -27,7 +30,7 @@ corpus <- tm_map(corpus, content_transformer(tolower))
 corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
 corpus <- tm_map(corpus, removeWords, stopwords())
 #remove the word said because it's the most common and it's boring
-corpus <- tm_map(corpus, removeWords, "said")
+corpus <- tm_map(corpus, removeWords, c("said", "reuters"))
 corpus <- tm_map(corpus, stripWhitespace)
 #corpus <- tm_map(corpus, stemDocument, language="english")
 #creating term matrix with TF-IDF weighting
@@ -41,20 +44,13 @@ dtm
 ```
 
 ```{r}
-spam <- removeSparseTerms(dtm, 0.75)
+spam <- removeSparseTerms(dtm, 0.90)
 spam
 ```
 
-```{r}
-print(as.data.frame(as.matrix(spam)))
-```
+
 ```{r}
 dataFrame <- as.data.frame(as.matrix(spam), stringsAsFactors=False)
-dataFrame
-```
-
-```{r}
-
 dataFrame$label = data$label
 dataFrame
 ```
@@ -76,7 +72,6 @@ model <- rpart(label ~ ., data = train_data, method = "class")
 
 # Make predictions on test data
 predictions <- predict(model, newdata = test_data, type = "class")
-predictions
 
 # Evaluate the model
 confusion_matrix <- table(predictions, test_data$label)
@@ -84,6 +79,47 @@ accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
 ```
 ```{r}
+confusion_matrix
+```
+
+```{r}
+word_list <- colnames(dataFrame)
+words_to_remove <- c("label")
+word_list <- word_list[!word_list %in% words_to_remove]
+
+
+
+kaggle <- SQL_GET_DATA("Kaggle")
+#invert the label column since the kaggle dataset uses 1 for fake and 0 for real
+kaggle$label <- ifelse(kaggle$label == 0, 1, 0)
+
+corpus <- Corpus(VectorSource(kaggle$text))
+
+# clean the corpus
+corpus <- tm_map(corpus, content_transformer(tolower))
+corpus <- tm_map(corpus, content_transformer(removeSpecialChars))
+corpus <- tm_map(corpus, removeWords, stopwords())
+#remove the word said because it's the most common and it's boring
+corpus <- tm_map(corpus, removeWords, c("said", "reuters"))
+corpus <- tm_map(corpus, stripWhitespace)
+#corpus <- tm_map(corpus, stemDocument, language="english")
+#creating term matrix with TF-IDF weighting
+dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE), dictionary = word_list))
+```
+
+```{r}
+dataFrame <- as.data.frame(as.matrix(dtm), stringsAsFactors=False)
+dataFrame$label = kaggle$label
+dataFrame
+```
+```{r}
+# Make predictions on test data
+predictions <- predict(model, newdata = dataFrame, type = "class")
+
+# Evaluate the model
+confusion_matrix <- table(predictions, dataFrame$label)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
 confusion_matrix
 ```
 
