@@ -9,4 +9,4 @@ data("Groceries")
 rules <- apriori(Groceries, parameter = list(supp = 0.02, conf = 0.2))
 
 # Display the top 10 rules
-inspect(head(rules, n=10))
+inspect(head(rules, n = 10))

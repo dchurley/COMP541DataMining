@@ -12,7 +12,6 @@ library(e1071)
 source("Database.R")
 
 data <- SQL_GET_DATA("Tutorial")
-data$id = data$X
 ```
 
 ```{r}
@@ -35,13 +34,10 @@ corpus <- tm_map(corpus, stripWhitespace)
 #corpus <- tm_map(corpus, stemDocument, language="english")
 #creating term matrix with TF-IDF weighting
 dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
-
-# Create a document-term matrix
-#dtm <- DocumentTermMatrix(corpus)
-```
-```{r}
 dtm
 ```
+
+
 
 ```{r}
 spam <- removeSparseTerms(dtm, 0.90)
@@ -54,11 +50,11 @@ dataFrame <- as.data.frame(as.matrix(spam), stringsAsFactors=False)
 dataFrame$label = data$label
 dataFrame
 ```
-```{r}
-library(rpart)
-```
+
+
 
 ```{r}
+library(rpart)
 # Split data into training and testing sets
 set.seed(123) # For reproducibility
 trainIndex <- createDataPartition(dataFrame$label, p = .8, 
