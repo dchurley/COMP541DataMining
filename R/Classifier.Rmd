@@ -13,6 +13,10 @@ source("Database.R")
 
 data <- SQL_GET_DATA("Tutorial")
 ```
+```{r}
+#take a smaller sample of data for fast prototyping
+data <- data[sample(nrow(data), 1000, replace = FALSE), ]
+```
 
 ```{r}
 #func to remove all characters but english alphabet letters
@@ -33,7 +37,7 @@ corpus <- tm_map(corpus, removeWords, c("said", "reuters"))
 corpus <- tm_map(corpus, stripWhitespace)
 #corpus <- tm_map(corpus, stemDocument, language="english")
 #creating term matrix with TF-IDF weighting
-dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = FALSE)))
+dtm <-DocumentTermMatrix(corpus,control = list(weighting = function(x) weightTfIdf(x, normalize = TRUE)))
 dtm
 ```
 
@@ -74,6 +78,46 @@ confusion_matrix <- table(predictions, test_data$label)
 accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
 cat("Accuracy:", accuracy, "\n")
 ```
+
+```{r}
+library(randomForest)
+# Split data into training and testing sets
+set.seed(123) # For reproducibility
+trainIndex <- createDataPartition(dataFrame$label, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+train_data <- dataFrame[trainIndex, ]
+test_data <- dataFrame[-trainIndex, ]
+
+
+# Train a classifier
+X_train <- train_data[, !names(train_data) %in% c("target")]
+y_train <- train_data$target
+X_test <- test_data[, !names(test_data) %in% c("target")]
+y_test <- test_data$target
+
+model <- randomForest(x=X_train, y=y_train)
+
+# Make predictions on test data
+predictions <- predict(model, newdata = test_data, type = "class")
+
+# Evaluate the model
+confusion_matrix <- table(predictions, test_data$label)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", accuracy, "\n")
+
+
+# Get feature importance
+importance <- importance(model)
+
+# Order the features by their importance
+sorted_importance <- importance[order(importance[,1], decreasing = TRUE),]
+
+# Display the top 10 features
+top_10_features <- sorted_importance[1:10,]
+print(top_10_features)
+```
+
 ```{r}
 confusion_matrix
 ```

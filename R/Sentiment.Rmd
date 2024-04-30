@@ -15,6 +15,7 @@ library(reshape2)
 library(caret)
 library(e1071)
 library(rpart)
+library(randomForest)
 ```
 
 
@@ -56,15 +57,13 @@ sentiment_table <- dcast(melt(sentiment_df, id.vars = "id"),
 
 
 sentiment_table
-```
-```{r}
 df <- subset(sentiment_table, select = -id)
 
 #df <- t(apply(df, 1, function(x) x / sum(x)))
 
 df <- as.data.frame(df)
-
 ```
+
 
 ```{r}
 df$label = data$label
@@ -82,12 +81,19 @@ test_data <- df[-trainIndex, ]
 
 # Train a classifier
 #model <- svm(label ~ ., data = train_data, method = "class")
-model <- rpart(label ~ ., data = train_data, method = "class")
+model <- randomForest(label ~ ., data = train_data, method = "class")
 
 ```
 
 ```{r}
+importance <- importance(model)
 
+# Order the features by their importance
+sorted_importance <- importance[order(importance[,1], decreasing = TRUE),]
+
+# Display the top 10 features
+top_10_features <- sorted_importance[1:10,]
+print(top_10_features)
 ```
 
 
